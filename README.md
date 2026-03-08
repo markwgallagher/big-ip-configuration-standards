@@ -25,34 +25,42 @@ Follow this structure for all user-created objects except monitors (which have c
 ```
 APPLICATION-ENVIRONMENT-OBJECT_TYPE
 ```
+The source of truth that these objects are created against is DNS:
+a VIP is service.domain.tld at precisely the moment that DNS resolution drives traffic to it. 
+By unwaveringly indexing service names against DNS, you have the first of many self-documenting features of your network that cost nother other than consistency. The VIP includes both the UQDN and the IP so even if the records change over time, you know how it was originally deployed and to the extent you keep your config to match the change, anyone will instantly know what the intent of the configuration is. 
+
+These conventions are easily expressed in automation interfaces whether a home grown script or an IaC interface. 
 
 Examples:
 - Pool Members: <slc>-pm-<uqdn> ie: prd-pm-usfld1svcpr01
 - Pool: <slc>-pl-<svc> example: prd-pl-svc
 - Virtual Server: <slc>-vs-<svc>-<ipv4/6.addr>-<t/u>-<listenport>
-- iRule: `auth-prod-irule`
-- Persistence Profile: `web-prod-persist`
+- iRule: <slc>-<svc>-description<yyyymmdd>-<ordinal>
+- TCP Profile: <tcp|udp>-<svc>-<feature>
 
 ### Why This Matters
 
 - **Consistency compounds**: A shop with 20 pools follows one naming convention; a shop with 500 pools across different eras follows seven. The operational cost of the second grows faster than linearly.
-- **Readability across time**: You will not remember what `pool_15` does when you encounter it in a change request three years from now. `checkout-prod-pool` tells you immediately.
-- **Ownership clarity**: When `auth-staging-irule` fails, it's obvious which team owns it. Ambiguous names require detective work for every incident.
+- **Readability across time**: You will not remember what `pool_15` does when you encounter it in a change request three years from now. `dev-pl-service` tells you immediately. iRules are especially prone to iteration and as such have a timestamp and ordinals in the object name to identify the direction of change. 
+- **Ownership clarity**: When a rule fails, it's obvious which team owns it. Ambiguous names require detective work for every incident. indexing to DNS allows you to validate the entire config with a small script. 
 
 ### Specific Guidelines
 
 **Pools and Nodes**
-- Pool: `{application}-{environment}-pool` (e.g., `payment-prod-pool`, `marketing-staging-pool`)
-- Nodes should use the member list directly; explicitly named node objects should be rare. If you create explicit node objects, follow: `{application}-{environment}-node-{purpose}` (e.g., `api-prod-node-primary`)
+- Pool: `<slc>-pl-<svc>` (e.g., `prd-pl-service`, `dev-pl-service2`)
+- the first such pool is named with no ordinal and each subsequent pool is incremented. 
+- Nodes match the DNS A and PTR records of the Node IP at the time of creation.
+- Key feature of this config is that the pool matches the VIP in log parsing and the node name can be reversed to an IP via DNS lookup. 
 
 **Virtual Servers**
-- Format: `{application}-{environment}-vs` (e.g., `web-prod-vs`, `admin-dev-vs`)
-- Add suffixes for variations: `web-prod-vs-alt`, `web-prod-vs-backup`
-- Include port in description if non-standard
+- Format: `<slc>-vs-<svc>-<ip.addr>-<listenport>` (e.g., `prd-vs-service-10.1.1.150-443`)
+- VIPs for the same service sort naturally and the next VIP changes only the port.
+- Now the VIP when it appears in logs will immediately provide positive identification of the service in a single line.
+- Service is DNS centric still and the A and PTR records are what drive client traffic to the VIP.
 
 **Health Monitors**
-- Monitors are the exception: they often serve multiple pools
-- Format: `{protocol}_{check_type}_{app_context}` (e.g., `http_healthz_checkout`, `tcp_mysql_core`, `https_api_staging`)
+- Monitors are the exception: they often serve multiple pools so they omit port info
+- Format: `<slc>-mon-<svc>-feature` (e.g., `prd-mon-service-sni`, `stg-mon-service-radius`, `dev-mon-service-tcphalfopen`)
 - Protocol first makes it easy to filter in the UI
 
 **iRules and Profiles**
