@@ -282,6 +282,12 @@ Persistence profiles ensure that a single client's requests go to the same backe
 
 **Cookie persistence in F5**: Create a cookie profile that matches your application's session timeout. F5 can set the cookie automatically or rewrite it.
 
+This feature is often marked as a security vulnerability by web securitiy scans because the simple algorithm used to encode the cookie data can theoretically provide an attacker information about the infrastructure that didn't already know. 
+
+Cookies are an active measure and as such do create overhead, especially when configured with encryption and other features for compliance reasons. 
+
+Some applications are already pushing the boundaries of header length so any additional items are going to be viewed as counter to application health. 
+
 ### SSL Session ID Persistence (Reference, Rarely Needed)
 
 **How it works**: Routes subsequent HTTPS requests that reuse the same SSL session to the same backend.
@@ -317,12 +323,12 @@ Every iRule should open with a clear header:
 
 ```tcl
 # ============================================================================
-# iRule: auth-prod-irule-jwt
+# iRule: prd-portal-jwt20260301
 # Purpose: Validate JWT tokens for authentication service requests
 # Environment: Production
-# Owner: security-team
+# SVCOwner: SECOPS
 # Last Updated: 2026-03-01
-# Last Updated By: m.gallagher
+# Last Updated By: network services
 # 
 # Events:
 #   - HTTP_REQUEST: Validate JWT, inject headers
@@ -362,23 +368,6 @@ iRules execute in specific event contexts. The cost of doing work at the wrong t
 - Rewriting responses in iRule when profiles would be more efficient.
 - Making external API calls in `HTTP_RESPONSE` (you're delaying the response; use a separate work queue).
 
-### When an iRule Is Right Versus a Profile
-
-**Use a profile when**:
-- It's built-in (HTTP, TCP, SSL).
-- It's a standard transformation (compression, rewriting).
-- It can be applied to many virtual servers (avoids duplication).
-
-**Use an iRule when**:
-- You need conditional logic ("if this header, then that").
-- You need to interact with external systems synchronously.
-- Standard profiles don't do what you need.
-
-**Use neither; use a backend change when**:
-- The application *could* handle this itself.
-- You're compensating for poor API design.
-- You're contemplating doing this in an iRule because deployment processes are too slow (fix the deployment process, not the load balancer).
-
 ### Performance Implications
 
 iRules are evaluated per-request or per-connection. Their performance matters at scale.
@@ -387,7 +376,6 @@ iRules are evaluated per-request or per-connection. Their performance matters at
 - Simple URL routing in iRules is fine; complex business logic starts to hurt at 10K+ RPS.
 - External API calls (especially failures) in iRules cause cascading timeouts.
 
-**Profile-based operations are always faster than iRules**, so prefer them when you have a choice.
 
 **Comments in iRules**:
 
@@ -417,13 +405,13 @@ SSL configuration sprawls. Without discipline, you end up with 50 custom profile
 - Determines what TLS versions clients must support.
 - Determines which ciphers are acceptable from clients.
 - Usually more permissive (supporting browsers requires compatibility).
-- Example: `web-prod-clientssl` supports TLS 1.2+ and modern ciphers, but also some legacy support for IE 11.
+- Example: `service.domain.tld-client` supports TLS 1.2+ and modern ciphers, but also some legacy support for IE 11.
 
 **Server Profile** (certificate, protocols, ciphers *facing your backends*):
 - Determines what TLS versions you'll use to backends.
 - Determines which ciphers you'll accept from backends.
 - Usually more restrictive (you control backends, so enforce strict standards).
-- Example: `web-prod-serverssl` requires TLS 1.3, no deprecated ciphers.
+- Example: `service.domain.tld-server` requires TLS 1.3, no deprecated ciphers.
 
 **Both are required** if you're terminating and re-establishing SSL to backends.
 
