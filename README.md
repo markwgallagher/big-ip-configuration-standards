@@ -483,6 +483,10 @@ Example of the lesson learned the hard way:
 
 **Create named profiles** for every deployment. Keep defaults untouched.
 
+It is advisable to create several copies of clientssl with different cipher sets and tls features enabled and disabled for different application requirements. 
+
+a VIP specific profile whose parent is one of the copies of clientssl is ideal and provides service level costomizations with the possibility of changing all at once by spawning a new copy of the parent. 
+
 ---
 
 ## Summary
