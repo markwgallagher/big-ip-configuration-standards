@@ -61,16 +61,15 @@ Examples:
 **Health Monitors**
 - Monitors are the exception: they often serve multiple pools so they omit port info
 - Format: `<slc>-mon-<svc>-feature` (e.g., `prd-mon-service-sni`, `stg-mon-service-radius`, `dev-mon-service-tcphalfopen`)
-- Protocol first makes it easy to filter in the UI
 
 **iRules and Profiles**
-- iRule: `{application}-{environment}-irule-{purpose}` (e.g., `api-prod-irule-auth`, `web-prod-irule-routing`)
-- Profile: `{application}-{environment}-{profile_type}` (e.g., `web-prod-http`, `api-prod-tcp`)
-- Custom profiles that are environment-agnostic: `{purpose}-profile` (e.g., `corporate-ciphers-profile`)
+- iRule: `<slc>-<svc>-feature<yyyymmdd>-<ordinal>` (e.g., `prd-service-hdr-rewrite20260606-7`, `dev-service-root-redir20260303-4`)
+- Profile: `<protocol>-<svc>-feature` (e.g., `http-portal-xff`, `http-service-64khdr`)
 
 **SSL Certificates and Keys**
-- Follow application/environment structure: `{application}-{environment}-crt`, `{application}-{environment}-key`
-- Use FQDN in description field for clarity
+- Follow application/environment structure: `<fqdn>-<yyyymmdd>` with -crt and -key if necessary however we will specifiy pkcs12/pfx from upstream for leaf certs for uniformity. 
+- Use FQDN in description field for clarity and the date to ID.
+- Chain certs additionally contain the strings '-chain-' and '-<root>-' or '-<intmdt>- if necessary.
 
 ---
 
@@ -78,7 +77,7 @@ Examples:
 
 F5 offers multiple load balancing algorithms. Documentation describes them accurately. What it doesn't always explain is when each choice is actually correct, and what failure looks like when you choose poorly.
 
-### Least Connections (Problematic Default)
+### Least Connections (node) (Problematic Default)
 
 **How it works**: Directs new connections to the pool member with the fewest active connections.
 
